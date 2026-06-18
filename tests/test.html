@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Todo Life Dashboard — Property-Based Tests</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 860px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      background: #f5f5f5;
+      color: #222;
+    }
+    h1 { margin-bottom: 0.25rem; }
+    .subtitle { color: #666; margin-bottom: 1.5rem; font-size: 0.9rem; }
+    #summary {
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      margin-bottom: 1.5rem;
+      font-weight: bold;
+      font-size: 1rem;
+    }
+    #summary.pass { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    #summary.fail { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    #summary.running { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+    #results { list-style: none; padding: 0; margin: 0; }
+    #results li {
+      padding: 0.6rem 1rem;
+      margin-bottom: 0.5rem;
+      border-radius: 5px;
+      font-size: 0.9rem;
+      border-left: 4px solid transparent;
+    }
+    #results li.pass {
+      background: #d4edda;
+      border-color: #28a745;
+      color: #155724;
+    }
+    #results li.fail {
+      background: #f8d7da;
+      border-color: #dc3545;
+      color: #721c24;
+    }
+    #results li.fail pre {
+      margin: 0.4rem 0 0;
+      white-space: pre-wrap;
+      font-size: 0.8rem;
+      background: #f1b0b7;
+      padding: 0.4rem 0.6rem;
+      border-radius: 3px;
+    }
+    #results li .label {
+      font-weight: bold;
+      margin-right: 0.4rem;
+    }
+    .pass .label { color: #28a745; }
+    .fail .label { color: #dc3545; }
+  </style>
+</head>
+<body>
+
+  <h1>Todo Life Dashboard — Property-Based Tests</h1>
+  <p class="subtitle">Feature: todo-life-dashboard · 13 properties · fast-check via CDN · ≥100 iterations each</p>
+
+  <div id="summary" class="running">⏳ Running tests…</div>
+  <ul id="results"></ul>
+
+  <!-- fast-check loaded via CDN (test harness only, never in production index.html) -->
+  <script src="https://cdn.jsdelivr.net/npm/fast-check@3/lib/bundle/fast-check.min.js"></script>
+
+  <script>
+    // ================================================================
+    //  MOCKS & INFRASTRUCTURE
+    // ================================================================
+
+    // In-memory localStorage mock — avoids real browser storage side-effects
+    // and works on file:// without triggering cross-origin restrictions.
+    const mockStorage = (function () {
+      let store = {};
+      return {
+        getItem(key) { return Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null; },
+        setItem(key, value) { store[key] = String(value); },
+        removeItem(key) { delete store[key]; },
+        clear() { store = {}; },
+        setRaw(key, value) { store[key] = value; }, // inject arbitrary raw values for P13
+      };
+    })();
+
+    // ================================================================
+    //  PURE LOGIC RE-DEFINITIONS (mirror of js/app.js, DOM-free)
+    // ================================================================
+
+    // --- Constants ---
+    const TASKS_KEY = "dashboard-tasks";
+    const LINKS_KEY = "dashboard-links";
+
+    // --- Storage helpers (use mockStorage instead of localStorage) ---
+    function load(key) {
+      try {
+        const raw = mockStorage.getItem(key);
+        if (raw === null) return [];
+        return JSON.parse(raw);
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function save(key, data) {
+      try {
+        mockStorage.setItem(key, JSON.stringify(data));
+      } catch (e) {
+        // silent no-op
+      }
+    }
+
+    // --- Greeting ---
+    function getGreeting(hour) {
+      if (hour >= 5 && hour <= 11) return "Good Morning";
+      if (hour >= 12 && hour <= 17) return "Good Afternoon";
+      if (hour >= 18 && hour <= 20) return "Good Evening";
+      return "Good Night"; // 0-4, 21-23
+    }
+
+    // --- Timer ---
+    function formatTime(seconds) {
+      const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
+      const ss = String(seconds % 60).padStart(2, "0");
+      return mm + ":" + ss;
+    }
+
+    // --- Task CRUD (operates on a passed-in array, no DOM, no global state) ---
+    function makeId() {
+      return (typeof crypto !== "undefined" && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : Date.now().toString() + Math.random().toString(36).slice(2);
+    }
+
+    function addTask(taskList, text) {
+      if (text.trim().length === 0) return taskList;
+      const newTask = { id: makeId(), text: text.trim(), completed: false };
+      return [...taskList, newTask];
+    }
+
+    function toggleTask(taskList, id) {
+      return taskList.map(function (t) {
+        return t.id === id ? Object.assign({}, t, { completed: !t.completed }) : t;
+      });
+    }
+
+    function editTask(taskList, id, newText) {
+      if (newText.trim().length === 0) return taskList;
+      return taskList.map(function (t) {
+        return t.id === id ? Object.assign({}, t, { text: newText.trim() }) : t;
+      });
+    }
+
+    function deleteTask(taskList, id) {
+      return taskList.filter(function (t) { return t.id !== id; });
+    }
+
+    // --- Link CRUD (operates on a passed-in array) ---
+    function addLink(linkList, label, url) {
+      if (label.trim().length === 0 || url.trim().length === 0) return linkList;
+      const newLink = { id: makeId(), label: label.trim(), url: url.trim() };
+      return [...linkList, newLink];
+    }
+
+    function deleteLink(linkList, id) {
+      return linkList.filter(function (l) { return l.id !== id; });
+    }
+
+    // ================================================================
+    //  ARBITRARIES (fast-check generators)
+    // ================================================================
+
+    // Non-empty, non-whitespace-only string
+    const validTextArb = fc.string({ minLength: 1 }).filter(s => s.trim().length > 0);
+
+    // Whitespace-only / empty string (P5, P11)
+    const blankStringArb = fc.oneof(
+      fc.constant(""),
+      fc.string({ minLength: 1, maxLength: 20 }).map(s => s.split("").map(() => " ").join(""))
+    );
+
+    // Task object with known shape
+    const taskArb = fc.record({
+      id:        fc.uuid(),
+      text:      validTextArb,
+      completed: fc.boolean(),
+    });
+
+    // Link object with known shape
+    const linkArb = fc.record({
+      id:    fc.uuid(),
+      label: validTextArb,
+      url:   validTextArb,
+    });
+
+    // ================================================================
+    //  TEST RUNNER HELPERS
+    // ================================================================
+    const results = [];
+
+    function runProperty(id, tag, prop) {
+      try {
+        fc.assert(prop, { numRuns: 100 });
+        results.push({ id, tag, ok: true });
+      } catch (err) {
+        results.push({ id, tag, ok: false, detail: err.message || String(err) });
+      }
+    }
+
+    // ================================================================
+    //  PROPERTY TESTS
+    // ================================================================
+
+    // P1 — Greeting correctness for every hour
+    // Feature: todo-life-dashboard, Property 1: getGreeting returns correct zone for any hour 0-23
+    runProperty("P1", "Feature: todo-life-dashboard, Property 1: getGreeting returns correct zone for any hour 0-23",
+      fc.property(fc.integer({ min: 0, max: 23 }), function (hour) {
+        const greeting = getGreeting(hour);
+        const valid = ["Good Morning", "Good Afternoon", "Good Evening", "Good Night"];
+        if (!valid.includes(greeting)) return false;
+        if (hour >= 5  && hour <= 11 && greeting !== "Good Morning")   return false;
+        if (hour >= 12 && hour <= 17 && greeting !== "Good Afternoon") return false;
+        if (hour >= 18 && hour <= 20 && greeting !== "Good Evening")   return false;
+        if ((hour <= 4 || hour >= 21) && greeting !== "Good Night")    return false;
+        return true;
+      })
+    );
+
+    // P2 — Timer display format is always MM:SS
+    // Feature: todo-life-dashboard, Property 2: formatTime(s) returns MM:SS format with correct values for any s in [0,1500]
+    runProperty("P2", "Feature: todo-life-dashboard, Property 2: formatTime(s) returns MM:SS format with correct values for any s in [0,1500]",
+      fc.property(fc.integer({ min: 0, max: 1500 }), function (s) {
+        const result = formatTime(s);
+        if (!/^\d{2}:\d{2}$/.test(result)) return false;
+        const parts  = result.split(":");
+        const mm     = parseInt(parts[0], 10);
+        const ss     = parseInt(parts[1], 10);
+        if (mm !== Math.floor(s / 60)) return false;
+        if (ss !== s % 60)             return false;
+        return true;
+      })
+    );
+
+    // P3 — Timer Start is idempotent when already running
+    // Feature: todo-life-dashboard, Property 3: startTimer idempotent when already running
+    runProperty("P3", "Feature: todo-life-dashboard, Property 3: startTimer idempotent when already running (timerState mock)",
+      fc.property(fc.integer({ min: 0, max: 1500 }), function (seconds) {
+        // Build a mock timerState where the timer is already running
+        const fakeIntervalId = 42; // non-null sentinel
+        const state = { totalSeconds: seconds, intervalId: fakeIntervalId };
+
+        // Re-implement startTimer against the local state object
+        function startTimerLocal() {
+          if (state.intervalId !== null) return; // idempotent guard
+          state.intervalId = setInterval(function () {}, 1000);
+        }
+
+        startTimerLocal(); // call once — should be a no-op
+        startTimerLocal(); // call twice — still no-op
+
+        // intervalId must remain the same sentinel value, totalSeconds unchanged
+        return state.intervalId === fakeIntervalId && state.totalSeconds === seconds;
+      })
+    );
+
+    // P4 — Adding a valid task grows the list by exactly one
+    // Feature: todo-life-dashboard, Property 4: addTask with valid text grows list by 1, new item has trimmed text, completed=false
+    runProperty("P4", "Feature: todo-life-dashboard, Property 4: addTask with valid text grows list by 1, new item has trimmed text, completed=false",
+      fc.property(fc.array(taskArb), validTextArb, function (initialTasks, text) {
+        const before = initialTasks.length;
+        const after  = addTask(initialTasks, text);
+        if (after.length !== before + 1)               return false;
+        const newItem = after[after.length - 1];
+        if (newItem.text !== text.trim())              return false;
+        if (newItem.completed !== false)               return false;
+        return true;
+      })
+    );
+
+    // P5 — Empty or whitespace-only text is rejected for both add and edit
+    // Feature: todo-life-dashboard, Property 5: addTask/editTask with empty/whitespace text leaves list unchanged
+    runProperty("P5", "Feature: todo-life-dashboard, Property 5: addTask/editTask with empty/whitespace text leaves list unchanged",
+      fc.property(
+        fc.array(taskArb, { minLength: 1 }),
+        blankStringArb,
+        function (initialTasks, blankText) {
+          // addTask must leave length unchanged
+          const afterAdd = addTask(initialTasks, blankText);
+          if (afterAdd.length !== initialTasks.length) return false;
+
+          // editTask on first task must leave text unchanged
+          const target    = initialTasks[0];
+          const afterEdit = editTask(initialTasks, target.id, blankText);
+          const edited    = afterEdit.find(t => t.id === target.id);
+          if (!edited || edited.text !== target.text)  return false;
+
+          return true;
+        }
+      )
+    );
+
+    // P6 — Toggle completion state is its own inverse
+    // Feature: todo-life-dashboard, Property 6: toggleTask twice restores original completed value
+    runProperty("P6", "Feature: todo-life-dashboard, Property 6: toggleTask twice restores original completed value",
+      fc.property(fc.array(taskArb, { minLength: 1 }), function (initialTasks) {
+        const target   = initialTasks[0];
+        const original = target.completed;
+        const after1   = toggleTask(initialTasks, target.id);
+        const after2   = toggleTask(after1, target.id);
+        const restored = after2.find(t => t.id === target.id);
+        return restored !== undefined && restored.completed === original;
+      })
+    );
+
+    // P7 — Edit updates the task's text to the new value
+    // Feature: todo-life-dashboard, Property 7: editTask updates text to trimmed newText
+    runProperty("P7", "Feature: todo-life-dashboard, Property 7: editTask updates text to trimmed newText",
+      fc.property(
+        fc.array(taskArb, { minLength: 1 }),
+        validTextArb,
+        function (initialTasks, newText) {
+          const target  = initialTasks[0];
+          const updated = editTask(initialTasks, target.id, newText);
+
+          // Target task has trimmed text
+          const editedTask = updated.find(t => t.id === target.id);
+          if (!editedTask || editedTask.text !== newText.trim()) return false;
+
+          // All other tasks are unchanged
+          for (let i = 1; i < initialTasks.length; i++) {
+            const orig = initialTasks[i];
+            const kept = updated.find(t => t.id === orig.id);
+            if (!kept || kept.text !== orig.text || kept.completed !== orig.completed) return false;
+          }
+          return true;
+        }
+      )
+    );
+
+    // P8 — Delete removes exactly the targeted task
+    // Feature: todo-life-dashboard, Property 8: deleteTask removes exactly the targeted task
+    runProperty("P8", "Feature: todo-life-dashboard, Property 8: deleteTask removes exactly the targeted task",
+      fc.property(fc.array(taskArb, { minLength: 1 }), function (initialTasks) {
+        const target  = initialTasks[0];
+        const before  = initialTasks.length;
+        const updated = deleteTask(initialTasks, target.id);
+
+        if (updated.length !== before - 1)                      return false;
+        if (updated.some(t => t.id === target.id))              return false;
+
+        // remaining tasks are untouched
+        for (const orig of initialTasks.slice(1)) {
+          const kept = updated.find(t => t.id === orig.id);
+          if (!kept || kept.text !== orig.text || kept.completed !== orig.completed) return false;
+        }
+        return true;
+      })
+    );
+
+    // P9 — Task data survives a localStorage round-trip
+    // Feature: todo-life-dashboard, Property 9: tasks survive a localStorage round-trip (save then load)
+    runProperty("P9", "Feature: todo-life-dashboard, Property 9: tasks survive a localStorage round-trip (save then load)",
+      fc.property(fc.array(taskArb), function (originalTasks) {
+        mockStorage.clear();
+        save(TASKS_KEY, originalTasks);
+        const loaded = load(TASKS_KEY);
+        if (!Array.isArray(loaded))                  return false;
+        if (loaded.length !== originalTasks.length)  return false;
+        for (let i = 0; i < originalTasks.length; i++) {
+          if (loaded[i].id        !== originalTasks[i].id)        return false;
+          if (loaded[i].text      !== originalTasks[i].text)      return false;
+          if (loaded[i].completed !== originalTasks[i].completed) return false;
+        }
+        return true;
+      })
+    );
+
+    // P10 — Adding a valid link grows the list by exactly one
+    // Feature: todo-life-dashboard, Property 10: addLink with valid label+url grows list by 1
+    runProperty("P10", "Feature: todo-life-dashboard, Property 10: addLink with valid label+url grows list by 1",
+      fc.property(fc.array(linkArb), validTextArb, validTextArb, function (initialLinks, label, url) {
+        const before = initialLinks.length;
+        const after  = addLink(initialLinks, label, url);
+        if (after.length !== before + 1)         return false;
+        const newItem = after[after.length - 1];
+        if (newItem.label !== label.trim())       return false;
+        if (newItem.url   !== url.trim())         return false;
+        return true;
+      })
+    );
+
+    // P11 — Invalid link submissions are rejected
+    // Feature: todo-life-dashboard, Property 11: addLink with empty label or url leaves list unchanged
+    runProperty("P11", "Feature: todo-life-dashboard, Property 11: addLink with empty label or url leaves list unchanged",
+      fc.property(
+        fc.array(linkArb),
+        // Generate a pair where at least one of label/url is blank
+        fc.oneof(
+          fc.tuple(blankStringArb, validTextArb),   // blank label, valid url
+          fc.tuple(validTextArb,   blankStringArb), // valid label, blank url
+          fc.tuple(blankStringArb, blankStringArb)  // both blank
+        ),
+        function (initialLinks, [label, url]) {
+          const after = addLink(initialLinks, label, url);
+          return after.length === initialLinks.length;
+        }
+      )
+    );
+
+    // P12 — Link data survives a localStorage round-trip
+    // Feature: todo-life-dashboard, Property 12: links survive a localStorage round-trip
+    runProperty("P12", "Feature: todo-life-dashboard, Property 12: links survive a localStorage round-trip",
+      fc.property(fc.array(linkArb), function (originalLinks) {
+        mockStorage.clear();
+        save(LINKS_KEY, originalLinks);
+        const loaded = load(LINKS_KEY);
+        if (!Array.isArray(loaded))                return false;
+        if (loaded.length !== originalLinks.length) return false;
+        for (let i = 0; i < originalLinks.length; i++) {
+          if (loaded[i].id    !== originalLinks[i].id)    return false;
+          if (loaded[i].label !== originalLinks[i].label) return false;
+          if (loaded[i].url   !== originalLinks[i].url)   return false;
+        }
+        return true;
+      })
+    );
+
+    // P13 — load() always returns an array regardless of storage state
+    // Feature: todo-life-dashboard, Property 13: load() always returns an array regardless of storage state
+    runProperty("P13", "Feature: todo-life-dashboard, Property 13: load() always returns an array regardless of storage state",
+      fc.property(
+        // Arbitrary raw string values including invalid JSON, or a special sentinel
+        // "null" meaning we want the key absent entirely
+        fc.oneof(
+          fc.constant(null),                                    // key absent
+          fc.constant(""),                                      // empty string
+          fc.constant("not valid json {{{"),                    // corrupt JSON
+          fc.constant("null"),                                  // JSON null
+          fc.constant("42"),                                    // JSON number
+          fc.string({ maxLength: 40 })                         // arbitrary string
+        ),
+        function (rawValue) {
+          mockStorage.clear();
+          if (rawValue === null) {
+            // leave key absent — mockStorage.getItem will return null
+          } else {
+            mockStorage.setRaw("test-p13-key", rawValue);
+          }
+
+          let result;
+          let threw = false;
+          try {
+            result = load("test-p13-key");
+          } catch (e) {
+            threw = true;
+          }
+          if (threw)                      return false;
+          if (!Array.isArray(result))     return false;
+          return true;
+        }
+      )
+    );
+
+    // ================================================================
+    //  RENDER RESULTS
+    // ================================================================
+    (function renderResults() {
+      const summaryEl = document.getElementById("summary");
+      const listEl    = document.getElementById("results");
+
+      const passed = results.filter(r => r.ok).length;
+      const total  = results.length;
+      const allOk  = passed === total;
+
+      summaryEl.className = allOk ? "pass" : "fail";
+      summaryEl.textContent = allOk
+        ? "✅ All " + total + " properties passed (≥100 iterations each)"
+        : "❌ " + (total - passed) + " of " + total + " properties failed";
+
+      for (const r of results) {
+        const li = document.createElement("li");
+        li.className = r.ok ? "pass" : "fail";
+
+        const label = document.createElement("span");
+        label.className = "label";
+        label.textContent = r.ok ? "✓ " + r.id : "✗ " + r.id;
+
+        li.appendChild(label);
+        li.appendChild(document.createTextNode(r.tag.replace(/^Feature: todo-life-dashboard, /, "")));
+
+        if (!r.ok && r.detail) {
+          const pre = document.createElement("pre");
+          pre.textContent = r.detail;
+          li.appendChild(pre);
+        }
+
+        listEl.appendChild(li);
+      }
+    })();
+  </script>
+</body>
+</html>

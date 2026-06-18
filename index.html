@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Life Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ── Ambient background orbs ── -->
+  <div class="orb orb-1" aria-hidden="true"></div>
+  <div class="orb orb-2" aria-hidden="true"></div>
+  <div class="orb orb-3" aria-hidden="true"></div>
+
+  <!-- ── Top bar ── -->
+  <header id="topbar" role="banner">
+    <div class="topbar-left">
+      <span class="topbar-dot"></span>
+      <span id="topbar-title">Life Dashboard</span>
+    </div>
+    <button id="btn-theme-toggle" type="button" aria-label="Toggle light/dark mode">
+      <span id="theme-icon">☀️</span>
+    </button>
+  </header>
+
+  <!-- ── Main grid ── -->
+  <main id="dashboard-grid">
+
+    <!-- ╔══════════════╗ -->
+    <!-- ║   GREETING   ║ -->
+    <!-- ╚══════════════╝ -->
+    <section id="widget-greeting" aria-label="Greeting">
+      <p id="time"></p>
+      <p id="date"></p>
+      <h1 id="greeting"></h1>
+      <div id="name-row">
+        <span id="display-name"></span>
+        <button id="btn-edit-name" type="button" class="icon-btn" aria-label="Edit name" title="Edit name">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- ╔══════════════╗ -->
+    <!-- ║    TIMER     ║ -->
+    <!-- ╚══════════════╝ -->
+    <section id="widget-timer" aria-label="Focus Timer">
+      <div class="widget-header">
+        <span class="widget-icon">⏱</span>
+        <h2>Focus Timer</h2>
+      </div>
+
+      <div class="timer-face">
+        <svg class="timer-ring" viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="ring-track" cx="60" cy="60" r="52"/>
+          <circle class="ring-fill" id="timer-ring-fill" cx="60" cy="60" r="52"/>
+        </svg>
+        <p id="timer-display"></p>
+      </div>
+
+      <div class="timer-controls">
+        <button id="btn-start" type="button" class="btn-timer btn-start-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Start
+        </button>
+        <button id="btn-stop" type="button" class="btn-timer btn-ghost">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          Pause
+        </button>
+        <button id="btn-reset" type="button" class="btn-timer btn-ghost">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.7"/></svg>
+          Reset
+        </button>
+      </div>
+
+      <div id="timer-duration-row">
+        <label for="timer-duration-input">Duration (min)</label>
+        <div class="duration-input-group">
+          <input id="timer-duration-input" type="number" min="1" max="120" value="25" aria-label="Pomodoro duration in minutes" />
+          <button id="btn-set-duration" type="button">Set</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ╔══════════════╗ -->
+    <!-- ║   TO-DO LIST ║ -->
+    <!-- ╚══════════════╝ -->
+    <section id="widget-tasks" aria-label="To-Do List">
+      <div class="widget-header">
+        <span class="widget-icon">✅</span>
+        <h2>Tasks</h2>
+        <span id="task-count" class="badge"></span>
+      </div>
+
+      <div class="task-input-row">
+        <input id="task-input" type="text" placeholder="What needs to be done?" aria-label="New task text" />
+        <button id="btn-add-task" type="button" class="btn-icon-round" aria-label="Add task">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
+
+      <ul id="task-list" aria-label="Tasks"></ul>
+    </section>
+
+    <!-- ╔══════════════╗ -->
+    <!-- ║ QUICK LINKS  ║ -->
+    <!-- ╚══════════════╝ -->
+    <section id="widget-links" aria-label="Quick Links">
+      <div class="widget-header">
+        <span class="widget-icon">🔗</span>
+        <h2>Quick Links</h2>
+      </div>
+
+      <div class="link-form">
+        <input id="link-label-input" type="text" placeholder="Label" aria-label="Link label" />
+        <input id="link-url-input" type="url" placeholder="https://…" aria-label="Link URL" />
+        <button id="btn-add-link" type="button" class="btn-add-link-btn">Add Link</button>
+      </div>
+
+      <div id="links-container" aria-label="Saved links"></div>
+    </section>
+
+  </main>
+
+  <script src="js/app.js" defer></script>
+</body>
+</html>

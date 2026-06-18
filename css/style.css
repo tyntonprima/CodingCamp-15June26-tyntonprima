@@ -1,0 +1,892 @@
+/* ═══════════════════════════════════════════════════════════════
+   Life Dashboard  ·  god-tier redesign
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ──────────────────────────────────────────────────────────────
+   1. Design tokens
+────────────────────────────────────────────────────────────── */
+:root {
+  --ff: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  /* spacing */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px;
+  --s5:20px; --s6:24px; --s7:28px; --s8:32px;
+
+  /* font sizes */
+  --f9:9px; --f11:11px; --f12:12px; --f13:13px;
+  --f14:14px; --f15:15px; --f18:18px; --f22:22px;
+  --f28:28px; --f38:38px; --f54:54px;
+
+  /* shape */
+  --r4:4px; --r8:8px; --r12:12px; --r16:16px;
+  --r20:20px; --r24:24px; --rpill:999px;
+
+  /* motion */
+  --ease:cubic-bezier(.4,0,.2,1);
+  --fast:110ms; --base:220ms; --slow:380ms;
+}
+
+/* ── Dark palette ── */
+:root, [data-theme="dark"] {
+  --bg:      #080b14;
+  --bg2:     #0d1120;
+  --surf:    #111827;
+  --surf2:   #162032;
+  --surf3:   #1d2a40;
+  --bdr:     rgba(255,255,255,.07);
+  --bdr2:    rgba(255,255,255,.12);
+  --bdr3:    rgba(255,255,255,.18);
+
+  --p:       #6d5fff;   /* primary */
+  --ph:      #8b7fff;
+  --pa:      #5548d4;
+  --pglow:   rgba(109,95,255,.3);
+
+  --cyan:    #22d3ee;
+  --green:   #34d399;
+  --yellow:  #fbbf24;
+  --red:     #f87171;
+  --redh:    #fb9093;
+
+  --t1:      #f0f2ff;
+  --t2:      #7b84a8;
+  --t3:      #3d4465;
+  --tdone:   #3d4465;
+
+  --navbar:  rgba(8,11,20,.88);
+  --cshadow: 0 2px 4px rgba(0,0,0,.6), 0 12px 40px rgba(0,0,0,.5);
+  --cinset:  inset 0 1px 0 rgba(255,255,255,.05);
+  --fring:   0 0 0 3px rgba(109,95,255,.4);
+
+  --orb1:    rgba(109,95,255,.12);
+  --orb2:    rgba(34,211,238,.08);
+  --orb3:    rgba(52,211,153,.06);
+}
+
+/* ── Light palette ── */
+[data-theme="light"] {
+  --bg:      #f0f2fa;
+  --bg2:     #e6e9f5;
+  --surf:    #ffffff;
+  --surf2:   #f5f6fd;
+  --surf3:   #eceef9;
+  --bdr:     rgba(0,0,0,.06);
+  --bdr2:    rgba(0,0,0,.10);
+  --bdr3:    rgba(0,0,0,.16);
+
+  --p:       #5548d4;
+  --ph:      #7060ee;
+  --pa:      #4338b0;
+  --pglow:   rgba(85,72,212,.2);
+
+  --cyan:    #0891b2;
+  --green:   #059669;
+  --yellow:  #d97706;
+  --red:     #dc2626;
+  --redh:    #ef4444;
+
+  --t1:      #0f1626;
+  --t2:      #4b5275;
+  --t3:      #9198be;
+  --tdone:   #9198be;
+
+  --navbar:  rgba(240,242,250,.92);
+  --cshadow: 0 1px 3px rgba(0,0,0,.06), 0 6px 24px rgba(0,0,0,.08);
+  --cinset:  inset 0 1px 0 rgba(255,255,255,.9);
+  --fring:   0 0 0 3px rgba(85,72,212,.28);
+
+  --orb1:    rgba(85,72,212,.07);
+  --orb2:    rgba(8,145,178,.05);
+  --orb3:    rgba(5,150,105,.04);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   2. Reset & Base
+────────────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+html{font-size:var(--f15);-webkit-text-size-adjust:100%}
+
+body {
+  font-family: var(--ff);
+  background: var(--bg);
+  color: var(--t1);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.55;
+  display: flex;
+  flex-direction: column;
+  transition: background var(--base) var(--ease), color var(--base) var(--ease);
+}
+
+ul{list-style:none}
+h1,h2,h3{line-height:1.15;font-weight:800}
+button{font-family:var(--ff)}
+
+/* ──────────────────────────────────────────────────────────────
+   3. Ambient orbs
+────────────────────────────────────────────────────────────── */
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(80px);
+  z-index: 0;
+  transition: background var(--slow) var(--ease);
+}
+.orb-1 {
+  width: 600px; height: 500px;
+  top: -200px; left: -150px;
+  background: var(--orb1);
+}
+.orb-2 {
+  width: 500px; height: 400px;
+  bottom: -150px; right: -100px;
+  background: var(--orb2);
+}
+.orb-3 {
+  width: 350px; height: 350px;
+  top: 40%; left: 40%;
+  background: var(--orb3);
+  opacity: .6;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   4. Top bar
+────────────────────────────────────────────────────────────── */
+#topbar {
+  position: sticky;
+  top: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 var(--s6);
+  background: var(--navbar);
+  border-bottom: 1px solid var(--bdr);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  transition: background var(--base) var(--ease), border-color var(--base) var(--ease);
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.topbar-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--p), var(--cyan));
+  box-shadow: 0 0 8px var(--pglow);
+  flex-shrink: 0;
+}
+
+#topbar-title {
+  font-size: var(--f13);
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--t2);
+}
+
+#btn-theme-toggle {
+  width: 36px; height: 36px;
+  border-radius: var(--rpill);
+  background: var(--surf2);
+  border: 1px solid var(--bdr2);
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+  color: var(--t1);
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--fast), border-color var(--fast), transform var(--fast);
+}
+#btn-theme-toggle:hover {
+  background: var(--surf3);
+  border-color: var(--p);
+  transform: rotate(20deg) scale(1.1);
+}
+#btn-theme-toggle:focus-visible{outline:none;box-shadow:var(--fring)}
+
+/* ──────────────────────────────────────────────────────────────
+   5. Dashboard grid
+────────────────────────────────────────────────────────────── */
+#dashboard-grid {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--s4);
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--s5) var(--s4) var(--s8);
+  align-items: start;
+}
+
+@media (min-width: 640px) {
+  #dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--s5);
+    padding: var(--s6) var(--s6) var(--s8);
+  }
+}
+
+@media (min-width: 1100px) {
+  #dashboard-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--s6);
+    padding: var(--s7) var(--s7) var(--s8);
+  }
+}
+
+/* Greeting spans 2 cols on tablet */
+@media (min-width: 640px) and (max-width: 1099px) {
+  #widget-greeting { grid-column: 1 / -1; }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   6. Widget card base
+────────────────────────────────────────────────────────────── */
+section {
+  background: var(--surf);
+  border: 1px solid var(--bdr);
+  border-radius: var(--r24);
+  box-shadow: var(--cshadow), var(--cinset);
+  padding: var(--s6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  min-width: 0;
+  align-self: start;          /* card hugs its own content */
+  position: relative;
+  overflow: hidden;
+  transition:
+    background var(--base) var(--ease),
+    border-color var(--base) var(--ease),
+    box-shadow var(--base) var(--ease),
+    transform var(--base) var(--ease);
+}
+
+section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  background: linear-gradient(135deg, rgba(109,95,255,.06), transparent 60%);
+  transition: opacity var(--base) var(--ease);
+  pointer-events: none;
+}
+section:hover::before { opacity: 1; }
+section:hover {
+  border-color: var(--bdr2);
+  transform: translateY(-2px);
+  box-shadow: var(--cshadow), var(--cinset), 0 0 0 1px rgba(109,95,255,.1);
+}
+
+/* widget header row */
+.widget-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.widget-icon {
+  font-size: var(--f15);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+h2 {
+  font-size: var(--f11);
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--t3);
+  flex: 1;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   7. Greeting widget
+────────────────────────────────────────────────────────────── */
+#widget-greeting {
+  background: linear-gradient(145deg, var(--surf) 0%, var(--surf2) 100%);
+  align-items: flex-start;
+  gap: var(--s3);
+}
+
+/* glow circle in corner */
+#widget-greeting::after {
+  content: '';
+  position: absolute;
+  width: 220px; height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--pglow) 0%, transparent 70%);
+  bottom: -80px; right: -60px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#widget-greeting > * { position: relative; z-index: 1; }
+
+.greeting-top { /* removed — layout now fully vertical */ }
+
+#time {
+  font-size: var(--f54);
+  font-weight: 900;
+  letter-spacing: -.04em;
+  line-height: .95;
+  color: var(--t1);
+  font-variant-numeric: tabular-nums;
+  /* clock takes full width, never squeezed */
+  width: 100%;
+  min-width: 0;
+}
+
+#date {
+  font-size: var(--f12);
+  font-weight: 500;
+  color: var(--t2);
+  letter-spacing: .02em;
+}
+
+#greeting {
+  font-size: var(--f22);
+  font-weight: 800;
+  line-height: 1.1;
+  background: linear-gradient(120deg, var(--p) 0%, var(--cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* name row — sits below greeting, left-aligned, wraps if needed */
+#name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  min-width: 0;
+  width: 100%;
+}
+
+#display-name {
+  font-size: var(--f11);
+  font-weight: 600;
+  color: var(--t2);
+  background: var(--surf3);
+  border: 1px solid var(--bdr2);
+  border-radius: var(--rpill);
+  padding: 3px var(--s3);
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: border-color var(--fast), color var(--fast);
+}
+#display-name:hover { border-color: var(--p); color: var(--t1); }
+#display-name.name-placeholder {
+  color: var(--t3);
+  font-style: italic;
+  border-style: dashed;
+}
+
+.icon-btn {
+  width: 26px; height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--surf3);
+  border: 1px solid var(--bdr2);
+  cursor: pointer;
+  color: var(--t3);
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--fast), color var(--fast), border-color var(--fast);
+}
+.icon-btn:hover { background: var(--p); border-color: var(--p); color: #fff; }
+.icon-btn:focus-visible { outline: none; box-shadow: var(--fring); }
+
+/* name edit input — constrained so it never overflows the card */
+.name-edit-input {
+  font-family: var(--ff);
+  font-size: var(--f12);
+  color: var(--t1);
+  background: var(--surf3);
+  border: 1px solid var(--p);
+  border-radius: var(--rpill);
+  padding: 4px var(--s3);
+  /* grows to available space but never overflows */
+  flex: 1;
+  min-width: 80px;
+  max-width: 200px;
+  width: 0;          /* let flex sizing control actual width */
+  text-align: left;
+  outline: none;
+  box-shadow: var(--fring);
+}
+
+@media (max-width: 400px) {
+  #time     { font-size: var(--f38); }
+  #greeting { font-size: var(--f18); }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   8. Focus Timer widget
+────────────────────────────────────────────────────────────── */
+#widget-timer { align-items: center; text-align: center; }
+
+/* SVG ring */
+.timer-face {
+  position: relative;
+  width: 140px; height: 140px;
+  margin: var(--s2) auto;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.timer-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+.ring-track {
+  fill: none;
+  stroke: var(--bdr2);
+  stroke-width: 5;
+}
+
+.ring-fill {
+  fill: none;
+  stroke: url(#timerGrad);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 327;       /* 2π × 52 */
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1s linear;
+}
+
+/* inline SVG gradient — defined once in HTML-land via CSS filter trick */
+.timer-face::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, var(--surf2) 0%, var(--surf) 100%);
+  box-shadow: inset 0 2px 8px rgba(0,0,0,.25);
+}
+
+#timer-display {
+  font-size: var(--f38);
+  font-weight: 900;
+  letter-spacing: .02em;
+  color: var(--t1);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 2px 12px rgba(0,0,0,.3);
+}
+
+/* timer control buttons */
+.timer-controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--s2);
+  width: 100%;
+}
+
+.btn-timer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: var(--s2) 0;
+  border-radius: var(--r12);
+  font-size: var(--f12);
+  font-weight: 700;
+  border: 1px solid var(--bdr2);
+  cursor: pointer;
+  transition: all var(--fast) var(--ease);
+}
+
+.btn-start-btn {
+  background: linear-gradient(135deg, var(--p), var(--ph));
+  border-color: var(--p);
+  color: #fff;
+  box-shadow: 0 4px 14px var(--pglow);
+}
+.btn-start-btn:hover {
+  box-shadow: 0 6px 20px var(--pglow);
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  background: var(--surf2);
+  color: var(--t2);
+}
+.btn-ghost:hover {
+  background: var(--surf3);
+  border-color: var(--bdr3);
+  color: var(--t1);
+}
+.btn-timer:focus-visible { outline: none; box-shadow: var(--fring); }
+.btn-timer:active { transform: scale(.96) !important; }
+
+/* duration row */
+#timer-duration-row {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+#timer-duration-row label {
+  font-size: var(--f11);
+  font-weight: 600;
+  color: var(--t3);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+.duration-input-group {
+  display: flex;
+  gap: var(--s2);
+  align-items: center;
+}
+
+#timer-duration-input {
+  flex: 1;
+  text-align: center;
+  font-family: var(--ff);
+  font-size: var(--f14);
+  font-weight: 700;
+  color: var(--t1);
+  background: var(--surf2);
+  border: 1px solid var(--bdr2);
+  border-radius: var(--r8);
+  padding: var(--s2) var(--s3);
+  -moz-appearance: textfield;
+  transition: border-color var(--fast), box-shadow var(--fast);
+}
+#timer-duration-input::-webkit-outer-spin-button,
+#timer-duration-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+#timer-duration-input:focus { outline: none; border-color: var(--p); box-shadow: var(--fring); }
+
+#btn-set-duration {
+  padding: var(--s2) var(--s4);
+  font-size: var(--f12);
+  font-weight: 700;
+  border-radius: var(--r8);
+  background: var(--surf3);
+  border: 1px solid var(--bdr2);
+  color: var(--t1);
+  cursor: pointer;
+  transition: all var(--fast);
+}
+#btn-set-duration:hover { background: var(--p); border-color: var(--p); color: #fff; }
+#btn-set-duration:focus-visible { outline: none; box-shadow: var(--fring); }
+
+/* ──────────────────────────────────────────────────────────────
+   9. To-Do List widget
+────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px; height: 20px;
+  border-radius: var(--rpill);
+  background: var(--surf3);
+  border: 1px solid var(--bdr2);
+  font-size: var(--f9);
+  font-weight: 700;
+  color: var(--t2);
+  padding: 0 5px;
+  transition: background var(--fast), color var(--fast);
+}
+
+.task-input-row {
+  display: flex;
+  gap: var(--s2);
+  align-items: center;
+}
+.task-input-row input { flex: 1; min-width: 0; }
+
+.btn-icon-round {
+  width: 34px; height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--p), var(--ph));
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px var(--pglow);
+  transition: transform var(--fast), box-shadow var(--fast);
+}
+.btn-icon-round:hover { transform: scale(1.1); box-shadow: 0 6px 18px var(--pglow); }
+.btn-icon-round:active { transform: scale(.94); }
+.btn-icon-round:focus-visible { outline: none; box-shadow: var(--fring); }
+
+#task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+#task-list::-webkit-scrollbar { width: 3px; }
+#task-list::-webkit-scrollbar-track { background: transparent; }
+#task-list::-webkit-scrollbar-thumb { background: var(--bdr3); border-radius: var(--rpill); }
+
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 8px var(--s3);
+  background: var(--surf2);
+  border: 1px solid var(--bdr);
+  border-radius: var(--r12);
+  transition: background var(--fast), border-color var(--fast), transform var(--fast);
+}
+.task-item:hover {
+  background: var(--surf3);
+  border-color: rgba(109,95,255,.3);
+  transform: translateX(2px);
+}
+.task-item.completed { opacity: .65; }
+.task-item.completed .task-text {
+  text-decoration: line-through;
+  color: var(--tdone);
+}
+
+.task-checkbox {
+  appearance: none; -webkit-appearance: none;
+  width: 17px; height: 17px;
+  flex-shrink: 0;
+  border: 2px solid var(--bdr3);
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transition: background var(--fast), border-color var(--fast), box-shadow var(--fast);
+}
+.task-checkbox:hover { border-color: var(--p); box-shadow: 0 0 0 3px var(--pglow); }
+.task-checkbox:checked { background: var(--p); border-color: var(--p); }
+.task-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  top: 1px; left: 4px;
+  width: 4px; height: 8px;
+  border: 2px solid #fff;
+  border-top: none; border-left: none;
+  transform: rotate(45deg);
+}
+.task-checkbox:focus-visible { outline: none; box-shadow: var(--fring); }
+
+.task-text {
+  flex: 1;
+  font-size: var(--f13);
+  color: var(--t1);
+  word-break: break-word;
+  line-height: 1.4;
+  transition: color var(--fast);
+}
+
+.task-edit-input { flex: 1; min-width: 0; font-size: var(--f13); }
+.task-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+.btn-task-edit, .btn-task-delete, .btn-task-save, .btn-task-cancel {
+  padding: 3px var(--s2);
+  font-size: var(--f11);
+  font-weight: 700;
+  border-radius: var(--r8);
+  line-height: 1.5;
+  cursor: pointer;
+  transition: all var(--fast);
+}
+
+.btn-task-edit {
+  background: transparent;
+  border: 1px solid var(--bdr2);
+  color: var(--t3);
+}
+.btn-task-edit:hover { background: var(--surf3); border-color: var(--p); color: var(--p); }
+
+.btn-task-delete {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--t3);
+}
+.btn-task-delete:hover { background: rgba(248,113,113,.12); border-color: var(--red); color: var(--red); }
+
+.btn-task-save {
+  background: var(--green);
+  border: 1px solid var(--green);
+  color: #fff;
+}
+.btn-task-save:hover { filter: brightness(1.1); }
+
+.btn-task-cancel {
+  background: transparent;
+  border: 1px solid var(--bdr2);
+  color: var(--t2);
+}
+.btn-task-cancel:hover { background: var(--surf3); }
+
+/* ──────────────────────────────────────────────────────────────
+   10. Quick Links widget
+────────────────────────────────────────────────────────────── */
+.link-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.link-form input { width: 100%; }
+
+.btn-add-link-btn {
+  padding: var(--s2) var(--s4);
+  font-size: var(--f12);
+  font-weight: 700;
+  border-radius: var(--r8);
+  background: var(--surf3);
+  border: 1px solid var(--bdr2);
+  color: var(--t1);
+  cursor: pointer;
+  align-self: flex-end;
+  transition: all var(--fast);
+}
+.btn-add-link-btn:hover { background: var(--p); border-color: var(--p); color: #fff; box-shadow: 0 4px 12px var(--pglow); }
+.btn-add-link-btn:focus-visible { outline: none; box-shadow: var(--fring); }
+
+#links-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+.link-item { display: flex; align-items: center; gap: 3px; }
+
+.link-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px var(--s3);
+  background: linear-gradient(135deg, var(--p), var(--pa));
+  color: #fff;
+  border: none;
+  border-radius: var(--rpill);
+  font-size: var(--f12);
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: .01em;
+  max-width: 160px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 8px var(--pglow);
+  transition: opacity var(--fast), transform var(--fast), box-shadow var(--fast);
+}
+.link-pill:hover { opacity: .88; transform: translateY(-2px); box-shadow: 0 6px 16px var(--pglow); }
+.link-pill:active { transform: translateY(0); opacity: 1; }
+.link-pill:focus-visible { outline: none; box-shadow: var(--fring); }
+
+.btn-link-delete {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--bdr2);
+  color: var(--t3);
+  font-size: 9px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+  transition: all var(--fast);
+}
+.btn-link-delete:hover { background: var(--red); border-color: var(--red); color: #fff; }
+.btn-link-delete:focus-visible { outline: none; box-shadow: var(--fring); }
+
+/* ──────────────────────────────────────────────────────────────
+   11. Shared inputs
+────────────────────────────────────────────────────────────── */
+input[type="text"],
+input[type="url"] {
+  font-family: var(--ff);
+  font-size: var(--f13);
+  font-weight: 500;
+  color: var(--t1);
+  background: var(--surf2);
+  border: 1px solid var(--bdr);
+  border-radius: var(--r8);
+  padding: var(--s2) var(--s3);
+  line-height: 1.4;
+  width: 100%;
+  transition: border-color var(--fast), box-shadow var(--fast), background var(--base);
+}
+input[type="text"]::placeholder,
+input[type="url"]::placeholder { color: var(--t3); font-weight: 400; }
+input[type="text"]:hover,
+input[type="url"]:hover { border-color: var(--bdr3); }
+input[type="text"]:focus,
+input[type="url"]:focus {
+  outline: none;
+  border-color: var(--p);
+  background: var(--surf3);
+  box-shadow: var(--fring);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   12. Shared button default (fallback only)
+────────────────────────────────────────────────────────────── */
+button {
+  font-family: var(--ff);
+  font-size: var(--f13);
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--r8);
+  border: 1px solid var(--p);
+  background: var(--p);
+  color: #fff;
+  padding: var(--s2) var(--s4);
+  line-height: 1.4;
+  transition: background var(--fast), border-color var(--fast),
+              box-shadow var(--fast), transform var(--fast);
+  white-space: nowrap;
+}
+button:hover   { background: var(--ph); border-color: var(--ph); }
+button:active  { background: var(--pa); border-color: var(--pa); transform: scale(.97); }
+button:focus-visible { outline: none; box-shadow: var(--fring); }
+button:disabled { opacity: .38; cursor: not-allowed; transform: none; }
+
+/* ──────────────────────────────────────────────────────────────
+   13. SVG gradient definition (injected via CSS trick)
+       We add a hidden SVG to carry the linear gradient for the
+       ring stroke — works in all modern browsers.
+────────────────────────────────────────────────────────────── */
+#timer-svg-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+/* ──────────────────────────────────────────────────────────────
+   14. Mobile
+────────────────────────────────────────────────────────────── */
+@media (max-width: 399px) {
+  #dashboard-grid { gap: var(--s3); padding: var(--s3); }
+  section { padding: var(--s4); border-radius: var(--r16); gap: var(--s3); }
+  #time { font-size: var(--f38); }
+  #greeting { font-size: var(--f18); }
+  #timer-display { font-size: var(--f28); }
+  .timer-face { width: 110px; height: 110px; }
+  .link-form { gap: var(--s1); }
+}
+
+img,video,iframe,embed,object { max-width: 100%; }
